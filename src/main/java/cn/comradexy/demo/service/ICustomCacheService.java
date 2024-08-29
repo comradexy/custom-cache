@@ -1,5 +1,9 @@
 package cn.comradexy.demo.service;
 
+import cn.comradexy.demo.model.dto.UserDTO;
+
+import java.util.List;
+
 /**
  * service demo
  *
@@ -8,5 +12,10 @@ package cn.comradexy.demo.service;
  * @Description: service demo
  */
 public interface ICustomCacheService {
+    UserDTO getUserByUserName(String userName);
+
+    List<UserDTO> getUserByName(String name);
+
+    List<UserDTO> listUser();
 
 }

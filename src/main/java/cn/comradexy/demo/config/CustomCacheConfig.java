@@ -1,5 +1,6 @@
 package cn.comradexy.demo.config;
 
+import org.mybatis.spring.annotation.MapperScan;
 import org.redisson.Redisson;
 import org.redisson.api.RedissonClient;
 import org.redisson.codec.JsonJacksonCodec;
@@ -17,6 +18,7 @@ import org.springframework.context.annotation.Configuration;
  * @Description: config demo
  */
 @Configuration
+@MapperScan("cn.comradexy.demo.mapper")
 public class CustomCacheConfig {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
