@@ -70,6 +70,11 @@
             <artifactId>mysql-connector-java</artifactId>
             <version>8.0.28</version>
         </dependency>
+        <dependency>
+            <groupId>org.redisson</groupId>
+            <artifactId>redisson-spring-boot-starter</artifactId>
+            <version>3.26.0</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -88,7 +93,7 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
-                    <mainClass>cn.comradexy.demo.cache.CustomCacheApplication</mainClass>
+                    <mainClass>cn.comradexy.demo.CustomCacheApplication</mainClass>
                     <skip>true</skip>
                 </configuration>
             </plugin>

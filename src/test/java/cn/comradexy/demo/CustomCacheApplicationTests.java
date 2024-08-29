@@ -1,4 +1,4 @@
-package cn.comradexy.demo.cache;
+package cn.comradexy.demo;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
