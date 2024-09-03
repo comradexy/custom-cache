@@ -52,14 +52,12 @@ public class DataSourceConfig implements EnvironmentAware {
         String url = environment.getProperty(prefix + "url");
         String username = environment.getProperty(prefix + "username");
         String password = environment.getProperty(prefix + "password");
-        String driverClassName = environment.getProperty(prefix + "driver-class-name");
 
         // 创建数据源
         return DataSourceBuilder.create()
                 .url(url)
                 .username(username)
                 .password(password)
-                .driverClassName(driverClassName)
                 .build();
     }
 

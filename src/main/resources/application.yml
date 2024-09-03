@@ -15,12 +15,10 @@ router:
   jdbc:
     datasource:
       hot:
-        driver-class-name: com.mysql.jdbc.Driver
         url: jdbc:mysql://localhost:3306/custom_cache_hot?useUnicode=true
         username: root
         password: 1234
       cold:
-        driver-class-name: com.mysql.jdbc.Driver
         url: jdbc:mysql://localhost:3306/custom_cache?useUnicode=true
         username: root
         password: 1234

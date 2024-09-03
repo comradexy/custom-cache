@@ -37,4 +37,7 @@ public interface UserMapper {
 
     @Select("select * from users")
     List<UserDO> queryAll();
+
+    @Select("select count(*) from users")
+    int count();
 }
