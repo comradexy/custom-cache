@@ -1,5 +1,6 @@
 package cn.comradexy.demo;
 
+import cn.comradexy.demo.config.DataSourceConfig;
 import cn.comradexy.demo.mapper.UserMapper;
 import cn.comradexy.demo.separation.DataSourceContextHolder;
 import org.junit.jupiter.api.Test;
@@ -23,11 +24,11 @@ class CustomCacheApplicationTests {
 
     @Test
     void dbRouterTest() {
-        DataSourceContextHolder.setDataSourceType("hot");
+        DataSourceContextHolder.setDataSourceType(DataSourceConfig.HOT_DATA_SOURCE);
         int hot_count = userMapper.count();
         logger.info("hot_count: {}", hot_count);
 
-        DataSourceContextHolder.setDataSourceType("cold");
+        DataSourceContextHolder.setDataSourceType(DataSourceConfig.COLD_DATA_SOURCE);
         int cold_count = userMapper.count();
         logger.info("cold_count: {}", cold_count);
     }
