@@ -2,7 +2,7 @@ package cn.comradexy.demo;
 
 import cn.comradexy.demo.config.DataSourceConfig;
 import cn.comradexy.demo.mapper.UserMapper;
-import cn.comradexy.demo.separation.DataSourceContextHolder;
+import cn.comradexy.demo.dbrouter.DataSourceContextHolder;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,7 +10,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 
 import javax.annotation.Resource;
 import javax.sql.DataSource;
-import java.sql.Statement;
 
 @SpringBootTest
 class CustomCacheApplicationTests {

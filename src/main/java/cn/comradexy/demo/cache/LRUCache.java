@@ -1,7 +1,5 @@
 package cn.comradexy.demo.cache;
 
-import cn.comradexy.demo.model.dto.UserDTO;
-
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -14,10 +12,8 @@ import java.util.Map;
  */
 public class LRUCache<K, V> {
     private final LinkedHashMap<K, V> cache;
-    private final int capacity;
 
     public LRUCache(int capacity) {
-        this.capacity = capacity;
         cache = new LinkedHashMap<>(capacity, 0.75f, true) {
             @Override
             protected boolean removeEldestEntry(Map.Entry<K, V> eldest) {

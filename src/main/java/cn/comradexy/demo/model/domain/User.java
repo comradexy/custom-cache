@@ -1,27 +1,27 @@
-package cn.comradexy.demo.model.dto;
+package cn.comradexy.demo.model.domain;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
 /**
- * DTO demo
+ * DO demo
  *
  * @Author: ComradeXY
  * @CreateTime: 2024-08-29
- * @Description: DTO demo
+ * @Description: DO demo
  */
 @Data
 @AllArgsConstructor
-@NoArgsConstructor
 @Builder
-public class UserDTO {
+public class User {
     private Long id;
     private String username;
     private String name;
     private String password;
     private String email;
+    private LocalDateTime createTime;
+    private LocalDateTime updateTime;
 }

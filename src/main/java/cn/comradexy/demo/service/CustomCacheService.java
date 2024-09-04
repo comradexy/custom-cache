@@ -1,15 +1,10 @@
 package cn.comradexy.demo.service;
 
 import cn.comradexy.demo.mapper.UserMapper;
-import cn.comradexy.demo.model.domain.UserDO;
-import cn.comradexy.demo.model.dto.UserDTO;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.BeanUtils;
+import cn.comradexy.demo.model.domain.User;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -21,38 +16,20 @@ import java.util.List;
  */
 @Service
 public class CustomCacheService implements ICustomCacheService {
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     @Resource
     private UserMapper userMapper;
 
-    public UserDTO getUserByUserName(String userName) {
-        UserDO user = userMapper.queryByUsername(userName);
-        UserDTO userDTO = new UserDTO();
-        BeanUtils.copyProperties(user, userDTO);
-        return userDTO;
+    public User getUserByUserName(String userName) {
+        return userMapper.queryByUsername(userName);
     }
 
-    public List<UserDTO> getUserByName(String name) {
-        List<UserDO> users = userMapper.queryByName(name);
-        List<UserDTO> userDTOS = new ArrayList<>();
-        users.forEach(user -> {
-            UserDTO userDTO = new UserDTO();
-            BeanUtils.copyProperties(user, userDTO);
-            userDTOS.add(userDTO);
-        });
-        return userDTOS;
+    public List<User> getUserByName(String name) {
+        return userMapper.queryByName(name);
     }
 
-    public List<UserDTO> listUser() {
-        List<UserDO> users = userMapper.queryAll();
-        List<UserDTO> userDTOS = new ArrayList<>();
-        users.forEach(user -> {
-            UserDTO userDTO = new UserDTO();
-            BeanUtils.copyProperties(user, userDTO);
-            userDTOS.add(userDTO);
-        });
-        return userDTOS;
+    public List<User> listUser() {
+        return userMapper.queryAll();
     }
 
 }

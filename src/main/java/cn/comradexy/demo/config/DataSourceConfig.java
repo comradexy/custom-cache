@@ -1,6 +1,6 @@
 package cn.comradexy.demo.config;
 
-import cn.comradexy.demo.separation.DynamicDataSource;
+import cn.comradexy.demo.dbrouter.DynamicDataSource;
 import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.context.EnvironmentAware;
 import org.springframework.context.annotation.Bean;

@@ -1,6 +1,6 @@
 package cn.comradexy.demo.mapper;
 
-import cn.comradexy.demo.model.domain.UserDO;
+import cn.comradexy.demo.model.domain.User;
 import org.apache.ibatis.annotations.*;
 
 import java.util.List;
@@ -16,27 +16,27 @@ import java.util.List;
 public interface UserMapper {
     @Insert("insert into users(username, password, email, create_time, update_time) " +
             "values(#{username}, #{name}, #{password}, #{email}, #{createTime}, #{updateTime})")
-    void insert(UserDO user);
+    void insert(User user);
 
     @Update("update users set username=#{username}, name=#{name}, password=#{password}, email=#{email}, " +
             "update_time=#{updateTime} " +
             "where id=#{id}")
-    void update(UserDO user);
+    void update(User user);
 
     @Delete("delete from users where id=#{id}")
     void delete(Long id);
 
     @Select("select * from users where id=#{id}")
-    UserDO queryById(Long id);
+    User queryById(Long id);
 
     @Select("select * from users where username=#{username}")
-    UserDO queryByUsername(String username);
+    User queryByUsername(String username);
 
     @Select("select * from users where name=#{name}")
-    List<UserDO> queryByName(String name);
+    List<User> queryByName(String name);
 
     @Select("select * from users")
-    List<UserDO> queryAll();
+    List<User> queryAll();
 
     @Select("select count(*) from users")
     int count();
