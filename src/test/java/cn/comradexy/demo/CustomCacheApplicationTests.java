@@ -16,9 +16,6 @@ class CustomCacheApplicationTests {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     @Resource
-    DataSource dataSource;
-
-    @Resource
     UserMapper userMapper;
 
     @Test
