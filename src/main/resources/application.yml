@@ -15,10 +15,10 @@ router:
   jdbc:
     datasource:
       hot:
-        url: jdbc:mysql://localhost:3306/custom_cache_hot?useUnicode=true
+        url: jdbc:mysql://localhost:3306/jzo2o_demo?useUnicode=true
         username: root
         password: 1234
       cold:
-        url: jdbc:mysql://localhost:3306/custom_cache?useUnicode=true
+        url: jdbc:mysql://localhost:3306/jzo2o_demo_cold?useUnicode=true
         username: root
         password: 1234

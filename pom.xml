@@ -114,7 +114,7 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
-                    <mainClass>cn.comradexy.demo.CustomCacheApplication</mainClass>
+                    <mainClass>cn.comradexy.demo.Application</mainClass>
                     <skip>true</skip>
                 </configuration>
             </plugin>

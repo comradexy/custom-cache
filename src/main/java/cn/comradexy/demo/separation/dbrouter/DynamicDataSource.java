@@ -1,4 +1,4 @@
-package cn.comradexy.demo.dbrouter;
+package cn.comradexy.demo.separation.dbrouter;
 
 import org.springframework.jdbc.datasource.lookup.AbstractRoutingDataSource;
 

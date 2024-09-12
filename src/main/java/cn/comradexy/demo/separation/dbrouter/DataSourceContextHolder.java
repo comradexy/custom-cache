@@ -1,4 +1,4 @@
-package cn.comradexy.demo.dbrouter;
+package cn.comradexy.demo.separation.dbrouter;
 
 /**
  * 数据源上下文

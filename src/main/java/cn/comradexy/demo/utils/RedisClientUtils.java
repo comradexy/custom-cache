@@ -1,4 +1,4 @@
-package cn.comradexy.demo.cache;
+package cn.comradexy.demo.utils;
 
 import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Component;

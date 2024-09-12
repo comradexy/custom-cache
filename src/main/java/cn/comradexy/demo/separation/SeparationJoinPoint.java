@@ -1,7 +1,7 @@
-package cn.comradexy.demo.aspect;
+package cn.comradexy.demo.separation;
 
-import cn.comradexy.demo.dbrouter.DataSourceContextHolder;
-import cn.comradexy.demo.mapper.UserMapper;
+import cn.comradexy.demo.separation.dbrouter.DataSourceConfig;
+import cn.comradexy.demo.separation.dbrouter.DataSourceContextHolder;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
@@ -9,8 +9,6 @@ import org.aspectj.lang.annotation.Pointcut;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-
-import javax.annotation.Resource;
 
 /**
  * 冷热分离切面类
@@ -24,10 +22,7 @@ import javax.annotation.Resource;
 public class SeparationJoinPoint {
     private final Logger logger = LoggerFactory.getLogger(SeparationJoinPoint.class);
 
-    @Resource
-    UserMapper userMapper;
-
-    @Pointcut("@annotation(cn.comradexy.demo.annotation.HotColdSeparation)")
+    @Pointcut("@annotation(cn.comradexy.demo.separation.HotColdSeparation)")
     public void hotColdSeparation() {
     }
 
@@ -35,12 +30,8 @@ public class SeparationJoinPoint {
     public Object around(ProceedingJoinPoint jp) throws Throwable {
         logger.info("hotColdSeparation");
         try {
-//            String key = (String) jp.getArgs()[0];
-//            if (isHot(key)) {
-//                DataSourceContextHolder.setDataSourceType(DataSourceConfig.HOT_DATA_SOURCE);
-//            } else {
-//                DataSourceContextHolder.setDataSourceType(DataSourceConfig.COLD_DATA_SOURCE);
-//            }
+            // TODO
+            DataSourceContextHolder.setDataSourceType(DataSourceConfig.HOT_DATA_SOURCE);
             return jp.proceed();
         } finally {
             DataSourceContextHolder.clearDataSourceType();

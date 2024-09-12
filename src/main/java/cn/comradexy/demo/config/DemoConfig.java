@@ -11,15 +11,15 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * config demo
+ * demo config
  *
  * @Author: ComradeXY
  * @CreateTime: 2024-08-29
- * @Description: config demo
+ * @Description: demo config
  */
 @Configuration
 @MapperScan("cn.comradexy.demo.mapper")
-public class CustomCacheConfig {
+public class DemoConfig {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     @Bean

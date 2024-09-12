@@ -1,4 +1,4 @@
-package cn.comradexy.demo.annotation;
+package cn.comradexy.demo.separation;
 
 /**
  * 冷热分离
