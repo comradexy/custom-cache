@@ -25,7 +25,7 @@ CREATE TABLE `serve`
 DROP TABLE IF EXISTS `serve_archive`;
 CREATE TABLE `serve_archive`
 (
-    `id`               BIGINT NOT NULL COMMENT '服务id',
+    `id`               INT NOT NULL COMMENT '服务id',
     `access_count`     BIGINT   DEFAULT 0 COMMENT '访问次数',
     `last_access_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '最后访问时间',
     `storage_type`     VARCHAR(10) COMMENT '存储类型（HOT / COLD）',
