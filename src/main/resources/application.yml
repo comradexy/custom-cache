@@ -1,24 +1,22 @@
+spring:
+  profiles:
+    active: dev
+
 server:
-  port: 8080
+  port: ${server.port:8080}
 
 logging:
   level:
-    root: info
-
-spring:
-  datasource:
-    url: jdbc:mysql://localhost:3306/custom_cache?useUnicode=true&characterEncoding=utf-8&useSSL=false
-    username: root
-    password: 1234
+    root: ${logging.level.root:info}
 
 router:
   jdbc:
     datasource:
       hot:
-        url: jdbc:mysql://localhost:3306/jzo2o_demo?useUnicode=true
-        username: root
-        password: 1234
+        url: ${router.jdbc.datasource.hot.url}
+        username: ${router.jdbc.datasource.hot.username}
+        password: ${router.jdbc.datasource.hot.password}
       cold:
-        url: jdbc:mysql://localhost:3306/jzo2o_demo_cold?useUnicode=true
-        username: root
-        password: 1234
+        url: ${router.jdbc.datasource.cold.url}
+        username: ${router.jdbc.datasource.cold.username}
+        password: ${router.jdbc.datasource.cold.password}

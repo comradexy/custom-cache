@@ -1,3 +1,5 @@
+### 开发环境 ###
+application-dev.yml
 
 target/
 !.mvn/wrapper/maven-wrapper.jar
