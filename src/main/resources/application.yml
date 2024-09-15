@@ -9,6 +9,11 @@ logging:
   level:
     root: ${logging.level.root:info}
 
+redis:
+  host: ${redis.host}
+  port: ${redis.port}
+  password: ${redis.password}
+
 router:
   jdbc:
     datasource:

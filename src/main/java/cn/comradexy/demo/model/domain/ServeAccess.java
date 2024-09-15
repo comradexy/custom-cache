@@ -7,18 +7,19 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 /**
- * 服务归档记录
+ * 服务访问记录
  *
  * @Author: ComradeXY
  * @CreateTime: 2024-08-29
- * @Description: 服务归档记录
+ * @Description: 服务访问记录
  */
 @Data
 @AllArgsConstructor
 @Builder
-public class ServeArchive {
+public class ServeAccess {
     private Long id;
-    private String storageType;
+    private Long accessCount;
+    private LocalDateTime lastAccessTime;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }

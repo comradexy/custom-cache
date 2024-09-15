@@ -26,5 +26,8 @@ public class ServeService implements IServeService {
         return serveMapper.selectById(id);
     }
 
-
+    @Separated(operateType = OperateType.INSERT)
+    public void insertServe(Serve serve) {
+        serveMapper.insert(serve);
+    }
 }

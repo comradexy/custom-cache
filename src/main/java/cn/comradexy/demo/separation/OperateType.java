@@ -8,5 +8,10 @@ package cn.comradexy.demo.separation;
  * @Description: 操作类型
  */
 public enum OperateType {
-    SELECT_ONE, INSERT, UPDATE, DELETE
+    SELECT_ONE,
+    SELECT_BATCH,
+    SELECT_FOR_UPDATE,
+    INSERT,
+    UPDATE,
+    DELETE
 }

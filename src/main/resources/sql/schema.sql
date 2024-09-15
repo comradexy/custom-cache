@@ -14,21 +14,36 @@ CREATE TABLE `serve`
     `create_by`      BIGINT                  DEFAULT NULL COMMENT '创建者',
     `update_by`      BIGINT                  DEFAULT NULL COMMENT '更新者',
     PRIMARY KEY (`id`) USING BTREE,
-    KEY `区域id` (`region_id`) USING BTREE,
-    KEY `服务id` (`serve_item_id`) USING BTREE
+    KEY              `区域id` (`region_id`) USING BTREE,
+    KEY              `服务id` (`serve_item_id`) USING BTREE
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_0900_ai_ci
   ROW_FORMAT = DYNAMIC COMMENT ='服务表';
 
 
+DROP TABLE IF EXISTS `serve_access`;
+CREATE TABLE `serve_access`
+(
+    `id`               INT      NOT NULL COMMENT '服务id',
+    `access_count`     BIGINT            DEFAULT 0 COMMENT '访问次数',
+    `last_access_time` DATETIME          DEFAULT CURRENT_TIMESTAMP COMMENT '最后访问时间',
+    `create_time`      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time`      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (`id`) USING BTREE
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_0900_ai_ci
+  ROW_FORMAT = DYNAMIC COMMENT ='服务访问记录表';
+
+
 DROP TABLE IF EXISTS `serve_archive`;
 CREATE TABLE `serve_archive`
 (
-    `id`               INT NOT NULL COMMENT '服务id',
-    `access_count`     BIGINT   DEFAULT 0 COMMENT '访问次数',
-    `last_access_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '最后访问时间',
-    `storage_type`     VARCHAR(10) COMMENT '存储类型（HOT / COLD）',
+    `id`           INT      NOT NULL COMMENT '服务id',
+    `storage_type` VARCHAR(10) COMMENT '存储类型（HOT / COLD / PROCESSING）',
+    `create_time`  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time`  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
