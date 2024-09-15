@@ -7,7 +7,7 @@ import java.lang.annotation.*;
  *
  * @Author: ComradeXY
  * @CreateTime: 2024-09-02
- * @Description: 冷热分离
+ * @Description: 冷热分离，加在Mapper上
  */
 @Target({ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)

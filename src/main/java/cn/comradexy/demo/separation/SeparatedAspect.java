@@ -91,6 +91,14 @@ public class SeparatedAspect {
                 logger.info("success: 批量查询服务--[{}]", args);
             } else if (operateType == OperateType.SELECT_FOR_UPDATE) {
                 // TODO
+                // 先查热库，如果存在，锁住数据后返回
+
+
+                // 如果不存在，查归档表
+                // 如果归档表中存在且状态为COLD，回写到热库->锁住数据后返回
+
+                // 如果归档表中不存在，则报错，数据不存在
+
 
             } else if (operateType == OperateType.INSERT) {
                 // TODO

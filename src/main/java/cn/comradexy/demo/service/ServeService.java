@@ -21,12 +21,10 @@ public class ServeService implements IServeService {
     @Resource
     private ServeMapper serveMapper;
 
-    @Separated(operateType = OperateType.SELECT_ONE)
     public Serve getServeById(Long id) {
         return serveMapper.selectById(id);
     }
 
-    @Separated(operateType = OperateType.INSERT)
     public void insertServe(Serve serve) {
         serveMapper.insert(serve);
     }
