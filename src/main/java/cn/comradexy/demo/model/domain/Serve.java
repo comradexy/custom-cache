@@ -3,6 +3,7 @@ package cn.comradexy.demo.model.domain;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import java.time.LocalDateTime;
 
@@ -16,6 +17,7 @@ import java.time.LocalDateTime;
 @Data
 @AllArgsConstructor
 @Builder
+@EqualsAndHashCode(of = "id")
 public class Serve {
     /*
      *`id`             BIGINT         NOT NULL COMMENT '服务id',
