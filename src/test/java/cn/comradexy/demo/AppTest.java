@@ -20,12 +20,10 @@ class AppTest {
     @Test
     void dbRouterTest() {
         DataSourceContextHolder.setDataSourceType(DataSourceConfig.HOT_DATA_SOURCE);
-        int hot_count = serveMapper.count();
-        logger.info("hot_count: {}", hot_count);
+
 
         DataSourceContextHolder.setDataSourceType(DataSourceConfig.COLD_DATA_SOURCE);
-        int cold_count = serveMapper.count();
-        logger.info("cold_count: {}", cold_count);
+
     }
 
 }

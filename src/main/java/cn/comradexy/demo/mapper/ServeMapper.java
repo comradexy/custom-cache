@@ -1,7 +1,11 @@
 package cn.comradexy.demo.mapper;
 
 import cn.comradexy.demo.model.domain.Serve;
+import cn.comradexy.demo.separation.OperateType;
+import cn.comradexy.demo.separation.Separated;
 import org.apache.ibatis.annotations.*;
+
+import java.util.List;
 
 /**
  * mapper demo
@@ -27,15 +31,18 @@ public interface ServeMapper {
      *`update_by`      BIGINT                  DEFAULT NULL COMMENT '更新者',
      */
 
+    @Separated(operateType = OperateType.SELECT_ONE)
     @Select("select * from serve where id=#{id}")
     Serve selectById(Long id);
 
+    @Separated(operateType = OperateType.INSERT)
     @Insert("insert into serve(id, serve_item_id, region_id, city_code, sale_status, price, is_hot, hot_time_stamp, " +
             "create_time, update_time, create_by, update_by) values(#{id}, #{serveItemId}, #{regionId}, #{cityCode}, " +
             "#{saleStatus}, #{price}, #{isHot}, #{hotTimeStamp}, #{createTime}, #{updateTime}, #{createBy}, " +
             "#{updateBy})")
     void insert(Serve serve);
 
-    @Select("select count(*) from serve")
-    int count();
+    @Separated(operateType = OperateType.SELECT_BATCH)
+    @Select("select * from serve")
+    List<Serve> selectAll();
 }

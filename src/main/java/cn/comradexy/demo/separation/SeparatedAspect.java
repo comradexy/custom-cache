@@ -75,6 +75,7 @@ public class SeparatedAspect {
                 } else {
                     logger.info("fail: 查询服务--[{}]", args);
                 }
+
             } else if (operateType == OperateType.SELECT_BATCH) {
                 // 查询冷库
                 DataSourceContextHolder.setDataSourceType(DataSourceConfig.COLD_DATA_SOURCE);
@@ -89,6 +90,7 @@ public class SeparatedAspect {
                 result = hotData;
 
                 logger.info("success: 批量查询服务--[{}]", args);
+
             } else if (operateType == OperateType.SELECT_FOR_UPDATE) {
                 // TODO
                 // 先查热库，如果存在，锁住数据后返回
