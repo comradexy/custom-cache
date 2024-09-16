@@ -193,9 +193,7 @@ public class SeparatedAspect {
 
                     // 然后回写到热库
                     DataSourceContextHolder.setDataSourceType(DataSourceConfig.HOT_DATA_SOURCE);
-                    for (Serve serve : coldOnlySet) {
-                        serveMapper.insert(serve);
-                    }
+                    coldOnlySet.forEach(serveMapper::insert);
 
                     // 最后在热库中条件查询并锁住数据
                     result = jp.proceed();
