@@ -40,9 +40,9 @@ public class ServeAccessService implements IServeAccessService {
     }
 
     @Override
-    public void recordAccess(Serve serve) {
+    public void recordAccess(long serveId) {
         // 查询记录是否存在
-        ServeAccess serveAccess = serveAccessMapper.selectById(serve.getId());
+        ServeAccess serveAccess = serveAccessMapper.selectById(serveId);
         if (null != serveAccess) {
             // 如果存在，则更新访问记录
             accessServeOnce(serveAccess);
@@ -51,7 +51,7 @@ public class ServeAccessService implements IServeAccessService {
         } else {
             // 如果不存在，则插入新记录
             serveAccess = ServeAccess.builder()
-                    .id(serve.getId())
+                    .id(serveId)
                     .accessCount(1L)
                     .lastAccessTime(LocalDateTime.now())
                     .build();

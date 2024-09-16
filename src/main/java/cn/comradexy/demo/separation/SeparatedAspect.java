@@ -76,7 +76,7 @@ public class SeparatedAspect {
 
                     // 记录访问
                     if (null != result) {
-                        serveAccessService.recordAccess((Serve) result);
+                        serveAccessService.recordAccess(((Serve) result).getId());
                     }
 
                     if (result != null) {
@@ -112,7 +112,7 @@ public class SeparatedAspect {
                     }).join();
 
                     // 记录访问
-                    batchSet.forEach(serveAccessService::recordAccess);
+                    batchSet.forEach((item) -> serveAccessService.recordAccess(item.getId()));
 
                     // 转为List返回
                     result = List.copyOf(batchSet);
@@ -122,7 +122,10 @@ public class SeparatedAspect {
                     break;
 
                 case SELECT_ONE_FOR_UPDATE:
-                    long id = (long) jp.getArgs()[0];
+                    Long id = jp.getArgs()[0] instanceof Long ? (long) jp.getArgs()[0] : null;
+                    if (id == null) {
+                        throw new RuntimeException("参数错误: id=" + id);
+                    }
 
                     // 先查热库，如果存在，锁住数据后返回
                     DataSourceContextHolder.setDataSourceType(DataSourceConfig.HOT_DATA_SOURCE);
@@ -132,7 +135,7 @@ public class SeparatedAspect {
                         result = jp.proceed();
 
                         // 记录访问
-                        serveAccessService.recordAccess(serve);
+                        serveAccessService.recordAccess(serve.getId());
 
                         break;
                     }
@@ -160,13 +163,16 @@ public class SeparatedAspect {
                     result = jp.proceed();
 
                     // 记录访问
-                    serveAccessService.recordAccess(serve);
+                    serveAccessService.recordAccess(serve.getId());
 
                     break;
 
                 case SELECT_BATCH_FOR_UPDATE:
-                    long serveItemId = (long) jp.getArgs()[0];
-                    long regionId = (long) jp.getArgs()[1];
+                    Long serveItemId = jp.getArgs()[0] instanceof Long ? (long) jp.getArgs()[0] : null;
+                    Long regionId = jp.getArgs()[1] instanceof Long ? (long) jp.getArgs()[1] : null;
+                    if (serveItemId == null || regionId == null) {
+                        throw new RuntimeException("参数错误: serveItemId=" + serveItemId + ", regionId=" + regionId);
+                    }
 
                     // 先预查询，获取冷库中存在而热库中不存在的数据
                     Set<Serve> coldOnlySet = CompletableFuture.supplyAsync(() -> {
@@ -199,7 +205,7 @@ public class SeparatedAspect {
                     result = jp.proceed();
 
                     // 记录访问
-                    ((List<Serve>) result).forEach(serveAccessService::recordAccess);
+                    ((List<Serve>) result).forEach((item) -> serveAccessService.recordAccess(item.getId()));
 
                     break;
 
@@ -220,12 +226,60 @@ public class SeparatedAspect {
                     break;
 
                 case INSERT:
+                    serve = jp.getArgs()[0] instanceof Serve ? (Serve) jp.getArgs()[0] : null;
+
+                    // 插入前检查：根据唯一键查询热库归档记录表，归档不存在走原有插入逻辑，归档记录存在则返回记录已存在，走后续幂等逻辑
+                    DataSourceContextHolder.setDataSourceType(DataSourceConfig.HOT_DATA_SOURCE);
+                    if (null != serveArchiveMapper.selectById(serve.getId())) {
+                        throw new RuntimeException("服务数据已存在: id=" + serve.getId());
+                    }
+
+                    // 插入热库
+                    result = jp.proceed();
+
+                    // 记录访问
+                    serveAccessService.recordAccess(serve.getId());
+
                     // TODO
+                    // 临界问题：先查询归档记录表数据不存在，然后发生归档删除热库数据，再 insert 订单，此时幂等失效，有订单重复风险
+                    // 解决方案：热库数据延迟删除，在数据写入冷库并且归档表新增记录后，延迟 Xmin 才删除热库数据，更新归档状态
 
                     break;
 
                 case UPDATE:
                     // TODO
+                    serve = jp.getArgs()[0] instanceof Serve ? (Serve) jp.getArgs()[0] : null;
+                    if (serve == null) {
+                        throw new RuntimeException("参数错误: serve=" + serve);
+                    }
+
+                    // 查询归档表
+                    serveArchive = serveArchiveMapper.selectById(serve.getId());
+                    if(serveArchive == null) {
+                        throw new RuntimeException("服务数据不存在: id=" + serve.getId());
+                    }
+
+                    // 如果归档状态为COLD
+                    if(serveArchive.getStorageType().equals("COLD")) {
+                        // 获取冷库数据
+
+                        // 回写到热库
+
+                        // 更新归档表状态为HOT
+
+                        // 更新热库数据
+
+                    }else{
+                        if(serveArchive.getStorageType().equals("PROCESSING")) {
+                            // 更新归档状态为HOT
+                        }
+
+                        // 更新热库数据
+
+                    }
+
+                    // 记录访问
+
 
                     break;
 
