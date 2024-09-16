@@ -82,22 +82,36 @@ public class SeparatedAspect {
                 }
 
             } else if (operateType == OperateType.SELECT_BATCH) {
-                // 查询冷库
-                DataSourceContextHolder.setDataSourceType(DataSourceConfig.COLD_DATA_SOURCE);
-                Set<Serve> coldData = new HashSet<>((List<Serve>) jp.proceed());
-
-                // 查询热库
-                DataSourceContextHolder.setDataSourceType(DataSourceConfig.HOT_DATA_SOURCE);
-                Set<Serve> hotData = new HashSet<>((List<Serve>) jp.proceed());
-
-                // 合并数据，优先保留热库的数据
-                hotData.addAll(coldData);
-                result = hotData;
+                // 并发查询热库和冷库
+                Set<Serve> batchSet = CompletableFuture.supplyAsync(() -> {
+                    // 查询冷库
+                    DataSourceContextHolder.setDataSourceType(DataSourceConfig.COLD_DATA_SOURCE);
+                    try {
+                        return new HashSet<>((List<Serve>) jp.proceed());
+                    } catch (Throwable throwable) {
+                        throw new RuntimeException(throwable);
+                    }
+                }).thenCombine(CompletableFuture.supplyAsync(() -> {
+                    // 查询热库
+                    DataSourceContextHolder.setDataSourceType(DataSourceConfig.HOT_DATA_SOURCE);
+                    try {
+                        return new HashSet<>((List<Serve>) jp.proceed());
+                    } catch (Throwable throwable) {
+                        throw new RuntimeException(throwable);
+                    }
+                }), (coldData, hotData) -> {
+                    // 合并数据，优先保留热库的数据
+                    hotData.addAll(coldData);
+                    return hotData;
+                }).join();
 
                 // 记录访问
-                for (Serve serve : hotData) {
+                for (Serve serve : batchSet) {
                     serveAccessService.recordAccess(serve);
                 }
+
+                // 转为List返回
+                result = List.copyOf(batchSet);
 
                 logger.info("success: 批量查询服务--[{}]", args);
 
