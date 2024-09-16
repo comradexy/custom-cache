@@ -35,6 +35,18 @@ public interface ServeMapper {
     @Select("select * from serve where id=#{id}")
     Serve selectById(Long id);
 
+    @Separated(operateType = OperateType.SELECT_BATCH)
+    @Select("select * from serve where serve_item_id=#{serveItemId} and region_id=#{regionId}")
+    List<Serve> selectByItemAndRegion(@Param("serveItemId") Long serveItemId, @Param("regionId") Long regionId);
+
+    @Separated(operateType = OperateType.SELECT_ONE_FOR_UPDATE)
+    @Select("select * from serve where id=#{id} for update")
+    Serve selectByIdForUpdate(Long id);
+
+    @Separated(operateType = OperateType.SELECT_BATCH_FOR_UPDATE)
+    @Select("select * from serve where serve_item_id=#{serveItemId} and region_id=#{regionId} for update")
+    List<Serve> selectByItemAndRegionForUpdate(@Param("serveItemId") Long serveItemId, @Param("regionId") Long regionId);
+
     @Separated(operateType = OperateType.INSERT)
     @Insert("insert into serve(id, serve_item_id, region_id, city_code, sale_status, price, is_hot, hot_time_stamp, " +
             "create_time, update_time, create_by, update_by) values(#{id}, #{serveItemId}, #{regionId}, #{cityCode}, " +

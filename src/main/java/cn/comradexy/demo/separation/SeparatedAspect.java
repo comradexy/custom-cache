@@ -1,6 +1,7 @@
 package cn.comradexy.demo.separation;
 
 import cn.comradexy.demo.mapper.ServeArchiveMapper;
+import cn.comradexy.demo.mapper.ServeMapper;
 import cn.comradexy.demo.model.domain.Serve;
 import cn.comradexy.demo.separation.dbrouter.DataSourceConfig;
 import cn.comradexy.demo.separation.dbrouter.DataSourceContextHolder;
@@ -39,6 +40,9 @@ public class SeparatedAspect {
     @Resource
     private ServeArchiveMapper serveArchiveMapper;
 
+    @Resource
+    private ServeMapper serveMapper;
+
     @Pointcut("@annotation(cn.comradexy.demo.separation.Separated)")
     public void separation() {
     }
@@ -49,102 +53,161 @@ public class SeparatedAspect {
         try {
             // 获取@Separated注解的operateType
             OperateType operateType = getOperateType(jp);
-
-            // 获取方法参数
-            StringBuilder args = new StringBuilder();
-            for (Object arg : jp.getArgs()) {
-                args.append(arg).append(",");
+            if (operateType == null) {
+                logger.warn("operateType is null: {}", jp.getSignature());
+                return jp.proceed();
             }
 
             Object result = null;
 
-            if (operateType == OperateType.SELECT_ONE) {
-                // 先查询热库
-                DataSourceContextHolder.setDataSourceType(DataSourceConfig.HOT_DATA_SOURCE);
-                result = jp.proceed();
-
-                // 如果查询不到，再查询冷库
-                if (result == null) {
-                    DataSourceContextHolder.setDataSourceType(DataSourceConfig.COLD_DATA_SOURCE);
+            switch (operateType) {
+                case SELECT_ONE:
+                    // 先查询热库
+                    DataSourceContextHolder.setDataSourceType(DataSourceConfig.HOT_DATA_SOURCE);
                     result = jp.proceed();
-                    DataSourceContextHolder.setDataSourceType(DataSourceConfig.HOT_DATA_SOURCE);
-                }
 
-                // 记录访问
-                if (null != result) {
-                    serveAccessService.recordAccess((Serve) result);
-                }
-
-                if (result != null) {
-                    logger.info("success: 查询服务--[{}]", args);
-                } else {
-                    logger.info("fail: 查询服务--[{}]", args);
-                }
-
-            } else if (operateType == OperateType.SELECT_BATCH) {
-                // 并发查询热库和冷库
-                Set<Serve> batchSet = CompletableFuture.supplyAsync(() -> {
-                    // 查询冷库
-                    DataSourceContextHolder.setDataSourceType(DataSourceConfig.COLD_DATA_SOURCE);
-                    try {
-                        return new HashSet<>((List<Serve>) jp.proceed());
-                    } catch (Throwable throwable) {
-                        throw new RuntimeException(throwable);
+                    // 如果查询不到，再查询冷库
+                    if (result == null) {
+                        DataSourceContextHolder.setDataSourceType(DataSourceConfig.COLD_DATA_SOURCE);
+                        result = jp.proceed();
+                        DataSourceContextHolder.setDataSourceType(DataSourceConfig.HOT_DATA_SOURCE);
                     }
-                }).thenCombine(CompletableFuture.supplyAsync(() -> {
-                    // 查询热库
-                    DataSourceContextHolder.setDataSourceType(DataSourceConfig.HOT_DATA_SOURCE);
-                    try {
-                        return new HashSet<>((List<Serve>) jp.proceed());
-                    } catch (Throwable throwable) {
-                        throw new RuntimeException(throwable);
+
+                    // 记录访问
+                    if (null != result) {
+                        serveAccessService.recordAccess((Serve) result);
                     }
-                }), (coldData, hotData) -> {
-                    // 合并数据，优先保留热库的数据
-                    hotData.addAll(coldData);
-                    return hotData;
-                }).join();
 
-                // 记录访问
-                for (Serve serve : batchSet) {
-                    serveAccessService.recordAccess(serve);
-                }
+                    if (result != null) {
+                        logger.info("success: 查询服务--[id: {}]", ((Serve) result).getId());
+                    } else {
+                        logger.info("fail: 查询服务--[args: {}]", jp.getArgs());
+                    }
 
-                // 转为List返回
-                result = List.copyOf(batchSet);
+                    break;
 
-                logger.info("success: 批量查询服务--[{}]", args);
+                case SELECT_BATCH:
+                    // 并发查询热库和冷库
+                    Set<Serve> batchSet = CompletableFuture.supplyAsync(() -> {
+                        // 查询冷库
+                        DataSourceContextHolder.setDataSourceType(DataSourceConfig.COLD_DATA_SOURCE);
+                        try {
+                            return new HashSet<>((List<Serve>) jp.proceed());
+                        } catch (Throwable throwable) {
+                            throw new RuntimeException(throwable);
+                        }
+                    }).thenCombine(CompletableFuture.supplyAsync(() -> {
+                        // 查询热库
+                        DataSourceContextHolder.setDataSourceType(DataSourceConfig.HOT_DATA_SOURCE);
+                        try {
+                            return new HashSet<>((List<Serve>) jp.proceed());
+                        } catch (Throwable throwable) {
+                            throw new RuntimeException(throwable);
+                        }
+                    }), (coldData, hotData) -> {
+                        // 合并数据，优先保留热库的数据
+                        hotData.addAll(coldData);
+                        return hotData;
+                    }).join();
 
-            } else if (operateType == OperateType.SELECT_FOR_UPDATE) {
-                // TODO
-                // 先查热库，如果存在，锁住数据后返回
+                    // 记录访问
+                    batchSet.forEach(serveAccessService::recordAccess);
+
+                    // 转为List返回
+                    result = List.copyOf(batchSet);
+
+                    logger.info("success: 批量查询服务--[args: {}]", jp.getArgs());
+
+                    break;
+
+                case SELECT_ONE_FOR_UPDATE:
+                    // TODO
+                    // 先查热库，如果存在，锁住数据后返回
 
 
-                // 如果不存在，查归档表
-                // 如果归档表中存在且状态为COLD，回写到热库->锁住数据后返回
+                    // 如果不存在，查归档表
+                    // 如果归档表中存在且状态为COLD，回写到热库->锁住数据后返回
 
-                // 如果归档表中不存在，则报错，数据不存在
+                    // 如果归档表中不存在，则报错，数据不存在
 
-            } else if (operateType == OperateType.COUNT) {
-                // 统计热库和归档表中状态为COLD的数据量，然后汇总
-                CompletableFuture<Integer> archiveFuture = CompletableFuture.supplyAsync(() -> {
+                    break;
+
+                case SELECT_BATCH_FOR_UPDATE:
+                    // TODO
+                    long serveItemId = (long) jp.getArgs()[0];
+                    long regionId = (long) jp.getArgs()[1];
+
+                    // 先预查询，获取冷库中存在而热库中不存在的数据
+                    Set<Serve> coldOnlySet = CompletableFuture.supplyAsync(() -> {
+                        // 查询冷库
+                        DataSourceContextHolder.setDataSourceType(DataSourceConfig.COLD_DATA_SOURCE);
+                        try {
+                            return new HashSet<>(serveMapper.selectByItemAndRegion(serveItemId, regionId));
+                        } catch (Throwable throwable) {
+                            throw new RuntimeException(throwable);
+                        }
+                    }).thenCombine(CompletableFuture.supplyAsync(() -> {
+                        // 查询热库
+                        DataSourceContextHolder.setDataSourceType(DataSourceConfig.HOT_DATA_SOURCE);
+                        try {
+                            return new HashSet<>(serveMapper.selectByItemAndRegion(serveItemId, regionId));
+                        } catch (Throwable throwable) {
+                            throw new RuntimeException(throwable);
+                        }
+                    }), (coldData, hotData) -> {
+                        // 获取冷库中存在而热库中不存在的数据
+                        coldData.removeAll(hotData);
+                        return coldData;
+                    }).join();
+
+                    // 然后回写到热库
                     DataSourceContextHolder.setDataSourceType(DataSourceConfig.HOT_DATA_SOURCE);
-                    return serveArchiveMapper.countCold();
-                });
-                int countHot = (int) jp.proceed();
-                int countArchive = archiveFuture.join();
-                result = countHot + countArchive;
+                    for (Serve serve : coldOnlySet) {
+                        serveMapper.insert(serve);
+                    }
 
-                logger.info("success: 统计服务--[{}]", args);
+                    // 最后在热库中条件查询并锁住数据
+                    result = jp.proceed();
 
-            } else if (operateType == OperateType.INSERT) {
-                // TODO
+                    // 记录访问
+                    ((List<Serve>) result).forEach(serveAccessService::recordAccess);
 
-            } else if (operateType == OperateType.UPDATE) {
-                // TODO
+                    break;
 
-            } else if (operateType == OperateType.DELETE) {
-                // TODO
+                case COUNT:
+                    // 统计热库和归档表中状态为COLD的数据量，然后汇总
+                    CompletableFuture<Integer> archiveFuture = CompletableFuture.supplyAsync(() -> {
+                        DataSourceContextHolder.setDataSourceType(DataSourceConfig.HOT_DATA_SOURCE);
+                        return serveArchiveMapper.countCold();
+                    });
+                    int countHot = (int) jp.proceed();
+                    int countArchive = archiveFuture.join();
+                    result = countHot + countArchive;
+
+                    // 统计不需要记录访问，不算在访问次数内
+
+                    logger.info("success: 统计服务");
+
+                    break;
+
+                case INSERT:
+                    // TODO
+
+                    break;
+
+                case UPDATE:
+                    // TODO
+
+                    break;
+
+                case DELETE:
+                    // TODO
+
+                    break;
+
+                default:
+                    logger.warn("operateType is not supported: {}", operateType);
+                    result = jp.proceed();
 
             }
 
