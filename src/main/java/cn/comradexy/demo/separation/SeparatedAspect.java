@@ -1,5 +1,6 @@
 package cn.comradexy.demo.separation;
 
+import cn.comradexy.demo.mapper.ServeArchiveMapper;
 import cn.comradexy.demo.model.domain.Serve;
 import cn.comradexy.demo.separation.dbrouter.DataSourceConfig;
 import cn.comradexy.demo.separation.dbrouter.DataSourceContextHolder;
@@ -18,6 +19,7 @@ import java.lang.reflect.Method;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * 冷热分离切面类
@@ -33,6 +35,9 @@ public class SeparatedAspect {
 
     @Resource
     private IServeAccessService serveAccessService;
+
+    @Resource
+    private ServeArchiveMapper serveArchiveMapper;
 
     @Pointcut("@annotation(cn.comradexy.demo.separation.Separated)")
     public void separation() {
@@ -89,6 +94,11 @@ public class SeparatedAspect {
                 hotData.addAll(coldData);
                 result = hotData;
 
+                // 记录访问
+                for (Serve serve : hotData) {
+                    serveAccessService.recordAccess(serve);
+                }
+
                 logger.info("success: 批量查询服务--[{}]", args);
 
             } else if (operateType == OperateType.SELECT_FOR_UPDATE) {
@@ -101,6 +111,17 @@ public class SeparatedAspect {
 
                 // 如果归档表中不存在，则报错，数据不存在
 
+            } else if (operateType == OperateType.COUNT) {
+                // 统计热库和归档表中状态为COLD的数据量，然后汇总
+                CompletableFuture<Integer> archiveFuture = CompletableFuture.supplyAsync(() -> {
+                    DataSourceContextHolder.setDataSourceType(DataSourceConfig.HOT_DATA_SOURCE);
+                    return serveArchiveMapper.countCold();
+                });
+                int countHot = (int) jp.proceed();
+                int countArchive = archiveFuture.join();
+                result = countHot + countArchive;
+
+                logger.info("success: 统计服务--[{}]", args);
 
             } else if (operateType == OperateType.INSERT) {
                 // TODO
@@ -112,6 +133,7 @@ public class SeparatedAspect {
                 // TODO
 
             }
+
             return result;
         } finally {
             DataSourceContextHolder.clearDataSourceType();

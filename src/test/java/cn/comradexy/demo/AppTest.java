@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import javax.annotation.Resource;
+import java.util.concurrent.CompletableFuture;
 
 @SpringBootTest
 class AppTest {
@@ -20,9 +21,7 @@ class AppTest {
     @Test
     void dbRouterTest() {
         DataSourceContextHolder.setDataSourceType(DataSourceConfig.HOT_DATA_SOURCE);
-
-
-        DataSourceContextHolder.setDataSourceType(DataSourceConfig.COLD_DATA_SOURCE);
+        System.out.println(serveMapper.count());
 
     }
 

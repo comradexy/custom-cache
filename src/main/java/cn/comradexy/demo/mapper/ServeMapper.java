@@ -42,7 +42,7 @@ public interface ServeMapper {
             "#{updateBy})")
     void insert(Serve serve);
 
-    @Separated(operateType = OperateType.SELECT_BATCH)
-    @Select("select * from serve")
-    List<Serve> selectAll();
+    @Separated(operateType = OperateType.COUNT)
+    @Select("select count(*) from serve")
+    int count();
 }

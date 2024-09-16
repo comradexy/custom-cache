@@ -11,6 +11,7 @@ public enum OperateType {
     SELECT_ONE,
     SELECT_BATCH,
     SELECT_FOR_UPDATE,
+    COUNT,
     INSERT,
     UPDATE,
     DELETE

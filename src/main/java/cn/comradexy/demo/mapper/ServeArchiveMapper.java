@@ -17,10 +17,6 @@ public interface ServeArchiveMapper {
     @Select("select * from serve_archive where id=#{id}")
     ServeAccess selectById(Long id);
 
-    @Update("update serve_archive set access_count=#{accessCount}, last_access_time=#{lastAccessTime}, " +
-            "storage_type=#{storageType} where id=#{id}")
-    void update(ServeAccess serveAccess);
-
-    @Select("select count(*) from serve_archive")
-    long count();
+    @Select("select count(*) from serve_archive where storage_type='COLD'")
+    int countCold();
 }

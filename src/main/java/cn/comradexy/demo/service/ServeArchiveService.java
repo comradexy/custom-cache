@@ -19,17 +19,7 @@ public class ServeArchiveService implements IServeArchiveService {
 
     @Override
     public boolean recordServeAccess(Long serveId) {
-        ServeAccess serveAccess = serveArchiveMapper.selectById(serveId);
-        if (serveAccess == null) return false;
 
-        // 访问次数+1，如果访问次数超过3次，则更新访问时间
-        serveAccess.setAccessCount(serveAccess.getAccessCount() + 1);
-        if (serveAccess.getAccessCount() >= 3) {
-            serveAccess.setLastAccessTime(LocalDateTime.now());
-            serveAccess.setAccessCount(0L);
-        }
-
-        serveArchiveMapper.update(serveAccess);
 
         return true;
     }
