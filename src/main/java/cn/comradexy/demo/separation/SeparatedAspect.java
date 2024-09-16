@@ -3,6 +3,7 @@ package cn.comradexy.demo.separation;
 import cn.comradexy.demo.mapper.ServeArchiveMapper;
 import cn.comradexy.demo.mapper.ServeMapper;
 import cn.comradexy.demo.model.domain.Serve;
+import cn.comradexy.demo.model.domain.ServeArchive;
 import cn.comradexy.demo.separation.dbrouter.DataSourceConfig;
 import cn.comradexy.demo.separation.dbrouter.DataSourceContextHolder;
 import cn.comradexy.demo.service.IServeAccessService;
@@ -121,19 +122,49 @@ public class SeparatedAspect {
                     break;
 
                 case SELECT_ONE_FOR_UPDATE:
-                    // TODO
-                    // 先查热库，如果存在，锁住数据后返回
+                    long id = (long) jp.getArgs()[0];
 
+                    // 先查热库，如果存在，锁住数据后返回
+                    DataSourceContextHolder.setDataSourceType(DataSourceConfig.HOT_DATA_SOURCE);
+                    Serve serve = serveMapper.selectById(id);
+                    if (serve != null) {
+                        // 锁住数据
+                        result = jp.proceed();
+
+                        // 记录访问
+                        serveAccessService.recordAccess(serve);
+
+                        break;
+                    }
 
                     // 如果不存在，查归档表
-                    // 如果归档表中存在且状态为COLD，回写到热库->锁住数据后返回
+                    ServeArchive serveArchive = serveArchiveMapper.selectById(id);
+                    if (null == serveArchive || !serveArchive.getStorageType().equals("COLD")) {
+                        // 如果归档表中不存在，或者归档表中存在但状态不为COLD，则报错，数据不存在
+                        throw new RuntimeException("服务数据不存在: id=" + id);
+                    }
 
-                    // 如果归档表中不存在，则报错，数据不存在
+                    // 从冷库中获取数据
+                    DataSourceContextHolder.setDataSourceType(DataSourceConfig.COLD_DATA_SOURCE);
+                    serve = serveMapper.selectById(id);
+
+                    // 回写到热库
+                    DataSourceContextHolder.setDataSourceType(DataSourceConfig.HOT_DATA_SOURCE);
+                    serveMapper.insert(serve);
+
+                    // 更新归档表状态
+                    serveArchive.setStorageType("HOT");
+                    serveArchiveMapper.updateStorageType(serveArchive);
+
+                    // 锁住数据并返回
+                    result = jp.proceed();
+
+                    // 记录访问
+                    serveAccessService.recordAccess(serve);
 
                     break;
 
                 case SELECT_BATCH_FOR_UPDATE:
-                    // TODO
                     long serveItemId = (long) jp.getArgs()[0];
                     long regionId = (long) jp.getArgs()[1];
 

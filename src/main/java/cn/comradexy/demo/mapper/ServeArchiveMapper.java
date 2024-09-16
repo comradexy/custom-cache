@@ -1,6 +1,6 @@
 package cn.comradexy.demo.mapper;
 
-import cn.comradexy.demo.model.domain.ServeAccess;
+import cn.comradexy.demo.model.domain.ServeArchive;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
@@ -15,7 +15,10 @@ import org.apache.ibatis.annotations.Update;
 @Mapper
 public interface ServeArchiveMapper {
     @Select("select * from serve_archive where id=#{id}")
-    ServeAccess selectById(Long id);
+    ServeArchive selectById(Long id);
+
+    @Update("update serve_archive set storage_type=#{storageType} where id=#{id}")
+    void updateStorageType(ServeArchive serveArchive);
 
     @Select("select count(*) from serve_archive where storage_type='COLD'")
     int countCold();
