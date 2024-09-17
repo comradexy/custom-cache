@@ -1,6 +1,11 @@
 spring:
   profiles:
     active: dev
+  rabbitmq:
+    host: ${spring.rabbitmq.host}
+    port: ${spring.rabbitmq.port}
+    username: ${spring.rabbitmq.username}
+    password: ${spring.rabbitmq.password}
 
 server:
   port: ${server.port:8080}
