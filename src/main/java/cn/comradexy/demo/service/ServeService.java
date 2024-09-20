@@ -2,8 +2,6 @@ package cn.comradexy.demo.service;
 
 import cn.comradexy.demo.mapper.ServeMapper;
 import cn.comradexy.demo.model.domain.Serve;
-import cn.comradexy.demo.separation.OperateType;
-import cn.comradexy.demo.separation.Separated;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
