@@ -6,6 +6,7 @@ import cn.comradexy.demo.mapper.ServeMapper;
 import cn.comradexy.demo.model.domain.Serve;
 import cn.comradexy.demo.separation.dbrouter.DataSourceContextHolder;
 import cn.comradexy.demo.separation.dbrouter.DynamicDataSourceConfig;
+import cn.comradexy.demo.utils.RabbitMQUtils;
 import org.apache.ibatis.session.Configuration;
 import org.apache.ibatis.session.SqlSession;
 import org.apache.ibatis.session.SqlSessionFactory;
@@ -19,16 +20,32 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import javax.annotation.Resource;
 import javax.sql.DataSource;
+import java.time.LocalDateTime;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 @SpringBootTest
 class AppTest {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
-
     @Resource
     private ServeMapper serveMapper;
-
     @Resource
     private TransactionTemplate transactionTemplate;
+    @Resource
+    private RabbitMQUtils rabbitMQUtils;
+
+    @Test
+    public void delayQueueTest() {
+        System.out.println(LocalDateTime.now() + ": Sending delayed message...");
+        rabbitMQUtils.sendDelayedMessage("Hello, RabbitMQ!", 5000);
+
+        CountDownLatch countDownLatch = new CountDownLatch(1);
+        try {
+            countDownLatch.await(20000, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
 
     @Test
     public void dbRouterTest() {
@@ -39,7 +56,7 @@ class AppTest {
     }
 
     @Test
-    public void atomikosTest() throws Exception {
+    public void atomikosTest() {
         transactionTemplate.executeWithoutResult(status -> {
             try {
 //                DataSource hotDataSource = getHotDataSource();
@@ -70,35 +87,4 @@ class AppTest {
         });
     }
 
-    private DataSource getHotDataSource() {
-        return (DataSource) DynamicDataSourceConfig.TARGET_DATA_SOURCES.get(DynamicDataSourceConfig.HOT_DATA_SOURCE);
-    }
-
-    private DataSource getColdDataSource() {
-        return (DataSource) DynamicDataSourceConfig.TARGET_DATA_SOURCES.get(DynamicDataSourceConfig.COLD_DATA_SOURCE);
-    }
-
-    private SqlSessionFactory getHotSqlSessionFactory() throws Exception {
-        SqlSessionFactoryBean sqlSessionFactoryBean = new SqlSessionFactoryBean();
-        sqlSessionFactoryBean.setDataSource(getHotDataSource());
-
-        Configuration configuration = new Configuration();
-        configuration.addMapper(ServeMapper.class);
-        configuration.addMapper(ServeArchiveMapper.class);
-        configuration.addMapper(ServeAccessMapper.class);
-        sqlSessionFactoryBean.setConfiguration(configuration);
-
-        return sqlSessionFactoryBean.getObject();
-    }
-
-    private SqlSessionFactory getColdSqlSessionFactory() throws Exception {
-        SqlSessionFactoryBean sqlSessionFactoryBean = new SqlSessionFactoryBean();
-        sqlSessionFactoryBean.setDataSource(getColdDataSource());
-
-        Configuration configuration = new Configuration();
-        configuration.addMapper(ServeMapper.class);
-        sqlSessionFactoryBean.setConfiguration(configuration);
-
-        return sqlSessionFactoryBean.getObject();
-    }
 }
