@@ -12,4 +12,5 @@ public interface IServeAccessService {
      * @param serveId 服务ID
      */
     void recordAccess(long serveId);
+
 }

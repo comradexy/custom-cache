@@ -54,7 +54,17 @@ public interface ServeMapper {
             "#{updateBy})")
     void insert(Serve serve);
 
-    @Separated(operateType = OperateType.COUNT)
+//    @Separated(operateType = OperateType.UPDATE)
+    @Update("update serve set serve_item_id=#{serveItemId}, region_id=#{regionId}, city_code=#{cityCode}, " +
+            "sale_status=#{saleStatus}, price=#{price}, is_hot=#{isHot}, hot_time_stamp=#{hotTimeStamp}, " +
+            "update_time=#{updateTime}, update_by=#{updateBy} where id=#{id}")
+    void update(Serve serve);
+
+    @Separated(operateType = OperateType.DELETE)
+    @Delete("delete from serve where id=#{id}")
+    void deleteById(Long id);
+
+//    @Separated(operateType = OperateType.COUNT)
     @Select("select count(*) from serve")
     int count();
 }

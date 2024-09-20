@@ -1,22 +1,31 @@
 package cn.comradexy.demo.separation;
 
+import cn.comradexy.demo.mapper.ServeAccessMapper;
 import cn.comradexy.demo.mapper.ServeArchiveMapper;
 import cn.comradexy.demo.mapper.ServeMapper;
 import cn.comradexy.demo.model.domain.Serve;
+import cn.comradexy.demo.model.domain.ServeAccess;
 import cn.comradexy.demo.model.domain.ServeArchive;
-import cn.comradexy.demo.separation.dbrouter.DataSourceConfig;
+import cn.comradexy.demo.separation.dbrouter.DynamicDataSourceConfig;
 import cn.comradexy.demo.separation.dbrouter.DataSourceContextHolder;
 import cn.comradexy.demo.service.IServeAccessService;
+import org.apache.ibatis.session.Configuration;
+import org.apache.ibatis.session.SqlSession;
+import org.apache.ibatis.session.SqlSessionFactory;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
 import org.aspectj.lang.reflect.MethodSignature;
+import org.mybatis.spring.SqlSessionFactoryBean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import javax.annotation.Resource;
+import javax.sql.DataSource;
 import java.lang.reflect.Method;
 import java.util.HashSet;
 import java.util.List;
@@ -46,6 +55,9 @@ public class SeparatedAspect {
     @Resource
     private ServeMapper serveMapper;
 
+    @Resource
+    private TransactionTemplate transactionTemplate;
+
     @Pointcut("@annotation(cn.comradexy.demo.separation.Separated)")
     public void separation() {
     }
@@ -54,6 +66,7 @@ public class SeparatedAspect {
     public Object around(ProceedingJoinPoint jp) throws Throwable {
         logger.info("hotColdSeparation");
         try {
+            result = null;
             // 获取@Separated注解的operateType
             OperateType operateType = getOperateType(jp);
             if (operateType == null) {
@@ -89,7 +102,6 @@ public class SeparatedAspect {
                 default:
                     logger.warn("operateType is not supported: {}", operateType);
                     result = jp.proceed();
-
             }
 
             return result;
@@ -101,14 +113,14 @@ public class SeparatedAspect {
 
     private void selectOne(ProceedingJoinPoint jp) throws Throwable {
         // 先查询热库
-        DataSourceContextHolder.setDataSourceType(DataSourceConfig.HOT_DATA_SOURCE);
+        DataSourceContextHolder.setDataSourceType(DynamicDataSourceConfig.HOT_DATA_SOURCE);
         result = jp.proceed();
 
         // 如果查询不到，再查询冷库
         if (result == null) {
-            DataSourceContextHolder.setDataSourceType(DataSourceConfig.COLD_DATA_SOURCE);
+            DataSourceContextHolder.setDataSourceType(DynamicDataSourceConfig.COLD_DATA_SOURCE);
             result = jp.proceed();
-            DataSourceContextHolder.setDataSourceType(DataSourceConfig.HOT_DATA_SOURCE);
+            DataSourceContextHolder.setDataSourceType(DynamicDataSourceConfig.HOT_DATA_SOURCE);
         }
 
         // 记录访问
@@ -128,7 +140,7 @@ public class SeparatedAspect {
         // 并发查询热库和冷库
         Set<Serve> batchSet = CompletableFuture.supplyAsync(() -> {
             // 查询冷库
-            DataSourceContextHolder.setDataSourceType(DataSourceConfig.COLD_DATA_SOURCE);
+            DataSourceContextHolder.setDataSourceType(DynamicDataSourceConfig.COLD_DATA_SOURCE);
             try {
                 return new HashSet<>((List<Serve>) jp.proceed());
             } catch (Throwable throwable) {
@@ -136,7 +148,7 @@ public class SeparatedAspect {
             }
         }).thenCombine(CompletableFuture.supplyAsync(() -> {
             // 查询热库
-            DataSourceContextHolder.setDataSourceType(DataSourceConfig.HOT_DATA_SOURCE);
+            DataSourceContextHolder.setDataSourceType(DynamicDataSourceConfig.HOT_DATA_SOURCE);
             try {
                 return new HashSet<>((List<Serve>) jp.proceed());
             } catch (Throwable throwable) {
@@ -165,7 +177,7 @@ public class SeparatedAspect {
         }
 
         // 先查热库，如果存在，锁住数据后返回
-        DataSourceContextHolder.setDataSourceType(DataSourceConfig.HOT_DATA_SOURCE);
+        DataSourceContextHolder.setDataSourceType(DynamicDataSourceConfig.HOT_DATA_SOURCE);
         Serve serve = serveMapper.selectById(id);
         if (serve != null) {
             // 锁住数据
@@ -185,11 +197,11 @@ public class SeparatedAspect {
         }
 
         // 从冷库中获取数据
-        DataSourceContextHolder.setDataSourceType(DataSourceConfig.COLD_DATA_SOURCE);
+        DataSourceContextHolder.setDataSourceType(DynamicDataSourceConfig.COLD_DATA_SOURCE);
         serve = serveMapper.selectById(id);
 
         // 回写到热库
-        DataSourceContextHolder.setDataSourceType(DataSourceConfig.HOT_DATA_SOURCE);
+        DataSourceContextHolder.setDataSourceType(DynamicDataSourceConfig.HOT_DATA_SOURCE);
         serveMapper.insert(serve);
 
         // 更新归档表状态
@@ -213,7 +225,7 @@ public class SeparatedAspect {
         // 先预查询，获取冷库中存在而热库中不存在的数据
         Set<Serve> coldOnlySet = CompletableFuture.supplyAsync(() -> {
             // 查询冷库
-            DataSourceContextHolder.setDataSourceType(DataSourceConfig.COLD_DATA_SOURCE);
+            DataSourceContextHolder.setDataSourceType(DynamicDataSourceConfig.COLD_DATA_SOURCE);
             try {
                 return new HashSet<>(serveMapper.selectByItemAndRegion(serveItemId, regionId));
             } catch (Throwable throwable) {
@@ -221,7 +233,7 @@ public class SeparatedAspect {
             }
         }).thenCombine(CompletableFuture.supplyAsync(() -> {
             // 查询热库
-            DataSourceContextHolder.setDataSourceType(DataSourceConfig.HOT_DATA_SOURCE);
+            DataSourceContextHolder.setDataSourceType(DynamicDataSourceConfig.HOT_DATA_SOURCE);
             try {
                 return new HashSet<>(serveMapper.selectByItemAndRegion(serveItemId, regionId));
             } catch (Throwable throwable) {
@@ -234,7 +246,7 @@ public class SeparatedAspect {
         }).join();
 
         // 然后回写到热库
-        DataSourceContextHolder.setDataSourceType(DataSourceConfig.HOT_DATA_SOURCE);
+        DataSourceContextHolder.setDataSourceType(DynamicDataSourceConfig.HOT_DATA_SOURCE);
         coldOnlySet.forEach(serveMapper::insert);
 
         // 最后在热库中条件查询并锁住数据
@@ -248,7 +260,7 @@ public class SeparatedAspect {
     private void count(ProceedingJoinPoint jp) throws Throwable {
         // 统计热库和归档表中状态为COLD的数据量，然后汇总
         CompletableFuture<Integer> archiveFuture = CompletableFuture.supplyAsync(() -> {
-            DataSourceContextHolder.setDataSourceType(DataSourceConfig.HOT_DATA_SOURCE);
+            DataSourceContextHolder.setDataSourceType(DynamicDataSourceConfig.HOT_DATA_SOURCE);
             return serveArchiveMapper.countCold();
         });
         int countHot = (int) jp.proceed();
@@ -262,9 +274,12 @@ public class SeparatedAspect {
 
     private void insert(ProceedingJoinPoint jp) throws Throwable {
         Serve serve = jp.getArgs()[0] instanceof Serve ? (Serve) jp.getArgs()[0] : null;
+        if (serve == null) {
+            throw new RuntimeException("参数错误: serve=null");
+        }
 
         // 插入前检查：根据唯一键查询热库归档记录表，归档不存在走原有插入逻辑，归档记录存在则返回记录已存在，走后续幂等逻辑
-        DataSourceContextHolder.setDataSourceType(DataSourceConfig.HOT_DATA_SOURCE);
+        DataSourceContextHolder.setDataSourceType(DynamicDataSourceConfig.HOT_DATA_SOURCE);
         if (null != serveArchiveMapper.selectById(serve.getId())) {
             throw new RuntimeException("服务数据已存在: id=" + serve.getId());
         }
@@ -275,21 +290,16 @@ public class SeparatedAspect {
         // 记录访问
         serveAccessService.recordAccess(serve.getId());
 
-        // TODO
-        // 临界问题：先查询归档记录表数据不存在，然后发生归档删除热库数据，再 insert 订单，此时幂等失效，有订单重复风险
-        // 解决方案：热库数据延迟删除，在数据写入冷库并且归档表新增记录后，延迟 Xmin 才删除热库数据，更新归档状态
-
     }
 
     private void update(ProceedingJoinPoint jp) throws Throwable {
-        // TODO
         Serve serve = jp.getArgs()[0] instanceof Serve ? (Serve) jp.getArgs()[0] : null;
         if (serve == null) {
-            throw new RuntimeException("参数错误: serve=" + serve);
+            throw new RuntimeException("参数错误: serve=null");
         }
 
         // 查询归档表
-        DataSourceContextHolder.setDataSourceType(DataSourceConfig.HOT_DATA_SOURCE);
+        DataSourceContextHolder.setDataSourceType(DynamicDataSourceConfig.HOT_DATA_SOURCE);
         ServeArchive serveArchive = serveArchiveMapper.selectById(serve.getId());
         if (serveArchive == null) {
             throw new RuntimeException("服务数据不存在: id=" + serve.getId());
@@ -298,18 +308,15 @@ public class SeparatedAspect {
         // 如果归档状态为COLD
         if (serveArchive.getStorageType().equals("COLD")) {
             // 获取冷库数据
-            DataSourceContextHolder.setDataSourceType(DataSourceConfig.COLD_DATA_SOURCE);
+            DataSourceContextHolder.setDataSourceType(DynamicDataSourceConfig.COLD_DATA_SOURCE);
             Serve coldServe = serveMapper.selectById(serve.getId());
 
             // 回写到热库
-            DataSourceContextHolder.setDataSourceType(DataSourceConfig.HOT_DATA_SOURCE);
+            DataSourceContextHolder.setDataSourceType(DynamicDataSourceConfig.HOT_DATA_SOURCE);
             serveMapper.insert(coldServe);
 
             // 更新归档表状态为HOT
             serveArchive.setStorageType("HOT");
-
-            // 更新热库数据
-            result = jp.proceed();
 
         } else {
             if (serveArchive.getStorageType().equals("PROCESSING")) {
@@ -317,10 +324,10 @@ public class SeparatedAspect {
                 serveArchive.setStorageType("HOT");
             }
 
-            // 更新热库数据
-            result = jp.proceed();
-
         }
+
+        // 更新热库数据
+        result = jp.proceed();
 
         // 记录访问
         serveAccessService.recordAccess(serve.getId());
@@ -328,9 +335,91 @@ public class SeparatedAspect {
     }
 
     private void delete(ProceedingJoinPoint jp) {
-        // TODO
-        // 逻辑删除
+        Long id = jp.getArgs()[0] instanceof Long ? (Long) jp.getArgs()[0] : null;
+        if (id == null) {
+            throw new RuntimeException("参数错误: id=null");
+        }
 
+        // 事务内执行
+        transactionTemplate.executeWithoutResult(status -> {
+            try (SqlSession hotSqlSession = getHotSqlSessionFactory().openSession();
+                 SqlSession coldSqlSession = getColdSqlSessionFactory().openSession()) {
+                // 获取冷库的 mapper
+                ServeMapper coldServeMapper = coldSqlSession.getMapper(ServeMapper.class);
+                // 获取热库的 mapper
+                ServeMapper hotServeMapper = hotSqlSession.getMapper(ServeMapper.class);
+                ServeArchiveMapper serveArchiveMapper = hotSqlSession.getMapper(ServeArchiveMapper.class);
+                ServeAccessMapper serveAccessMapper = hotSqlSession.getMapper(ServeAccessMapper.class);
+
+                // 查询归档表
+                ServeArchive serveArchive = serveArchiveMapper.selectById(id);
+                if (null != serveArchive) {
+                    // 如果归档表中存在数据，删除归档表数据
+                    serveArchiveMapper.deleteById(id);
+                    logger.info("删除归档记录: {}", serveArchive);
+
+                    if(serveArchive.getStorageType().equals("COLD")){
+                        // 如果归档表中数据状态为COLD，删除冷库数据
+                        coldServeMapper.deleteById(id);
+                        logger.info("删除冷库记录: {}", id);
+                    }else {
+                        // 如果归档表中数据状态为HOT或PROCESSING，删除热库数据
+                        hotServeMapper.deleteById(id);
+                        logger.info("删除热库记录: {}", id);
+                    }
+                }else{
+                    // 如果归档表中不存在数据，删除热库数据
+                    hotServeMapper.deleteById(id);
+                    logger.info("删除热库记录: {}", id);
+                }
+
+                // 删除访问记录
+                ServeAccess serveAccess = serveAccessMapper.selectById(id);
+                if (null != serveAccess) {
+                    serveAccessMapper.deleteById(id);
+                    logger.info("删除服务访问记录: {}", serveAccess);
+                }
+            } catch (Exception e) {
+                status.setRollbackOnly();
+            }
+        });
+
+        // TODO
+        // 临界问题：先查询归档记录表数据不存在，然后发生归档删除热库数据，再 insert 订单，此时幂等失效，有订单重复风险
+        // 解决方案：热库数据延迟删除，在数据写入冷库并且归档表新增记录后，延迟 Xmin 才删除热库数据，更新归档状态
+
+    }
+
+    private DataSource getHotDataSource() {
+        return (DataSource) DynamicDataSourceConfig.TARGET_DATA_SOURCES.get(DynamicDataSourceConfig.HOT_DATA_SOURCE);
+    }
+
+    private DataSource getColdDataSource() {
+        return (DataSource) DynamicDataSourceConfig.TARGET_DATA_SOURCES.get(DynamicDataSourceConfig.COLD_DATA_SOURCE);
+    }
+
+    private SqlSessionFactory getHotSqlSessionFactory() throws Exception {
+        SqlSessionFactoryBean sqlSessionFactoryBean = new SqlSessionFactoryBean();
+        sqlSessionFactoryBean.setDataSource(getHotDataSource());
+
+        Configuration configuration = new Configuration();
+        configuration.addMapper(ServeMapper.class);
+        configuration.addMapper(ServeArchiveMapper.class);
+        configuration.addMapper(ServeAccessMapper.class);
+        sqlSessionFactoryBean.setConfiguration(configuration);
+
+        return sqlSessionFactoryBean.getObject();
+    }
+
+    private SqlSessionFactory getColdSqlSessionFactory() throws Exception {
+        SqlSessionFactoryBean sqlSessionFactoryBean = new SqlSessionFactoryBean();
+        sqlSessionFactoryBean.setDataSource(getColdDataSource());
+
+        Configuration configuration = new Configuration();
+        configuration.addMapper(ServeMapper.class);
+        sqlSessionFactoryBean.setConfiguration(configuration);
+
+        return sqlSessionFactoryBean.getObject();
     }
 
     private OperateType getOperateType(ProceedingJoinPoint jp) {

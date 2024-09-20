@@ -1,7 +1,6 @@
 package cn.comradexy.demo.service;
 
 import cn.comradexy.demo.mapper.ServeAccessMapper;
-import cn.comradexy.demo.model.domain.Serve;
 import cn.comradexy.demo.model.domain.ServeAccess;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,5 +58,4 @@ public class ServeAccessService implements IServeAccessService {
         }
         logger.info("插入服务访问记录: {}", serveAccess);
     }
-
 }
