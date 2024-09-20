@@ -1,25 +1,19 @@
 package cn.comradexy.demo;
 
-import cn.comradexy.demo.mapper.ServeAccessMapper;
 import cn.comradexy.demo.mapper.ServeArchiveMapper;
 import cn.comradexy.demo.mapper.ServeMapper;
 import cn.comradexy.demo.model.domain.Serve;
 import cn.comradexy.demo.separation.dbrouter.DataSourceContextHolder;
 import cn.comradexy.demo.separation.dbrouter.DynamicDataSourceConfig;
 import cn.comradexy.demo.utils.RabbitMQUtils;
-import org.apache.ibatis.session.Configuration;
 import org.apache.ibatis.session.SqlSession;
-import org.apache.ibatis.session.SqlSessionFactory;
 import org.junit.jupiter.api.Test;
-import org.mybatis.spring.SqlSessionFactoryBean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import javax.annotation.Resource;
-import javax.sql.DataSource;
 import java.time.LocalDateTime;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
