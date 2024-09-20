@@ -47,8 +47,10 @@ class AppTest {
 //                JdbcTemplate hotJdbcTemplate = new JdbcTemplate(hotDataSource);
 //                JdbcTemplate coldJdbcTemplate = new JdbcTemplate(coldDataSource);
 
-                try (SqlSession hotSqlSession = getHotSqlSessionFactory().openSession();
-                     SqlSession coldSqlSession = getColdSqlSessionFactory().openSession()) {
+                try (SqlSession hotSqlSession = DynamicDataSourceConfig.SQL_SESSION_FACTORIES
+                        .get(DynamicDataSourceConfig.HOT_DATA_SOURCE).openSession();
+                     SqlSession coldSqlSession = DynamicDataSourceConfig.SQL_SESSION_FACTORIES
+                             .get(DynamicDataSourceConfig.COLD_DATA_SOURCE).openSession()) {
                     ServeArchiveMapper hotServeArchiveMapper = hotSqlSession.getMapper(ServeArchiveMapper.class);
                     System.out.println(hotServeArchiveMapper.selectById(100001L));
 

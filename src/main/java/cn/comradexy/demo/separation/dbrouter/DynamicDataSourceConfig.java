@@ -1,8 +1,15 @@
 package cn.comradexy.demo.separation.dbrouter;
 
+import cn.comradexy.demo.mapper.ServeAccessMapper;
+import cn.comradexy.demo.mapper.ServeArchiveMapper;
+import cn.comradexy.demo.mapper.ServeMapper;
 import com.atomikos.icatch.jta.UserTransactionImp;
 import com.atomikos.icatch.jta.UserTransactionManager;
 import com.atomikos.jdbc.AtomikosDataSourceBean;
+import org.apache.ibatis.session.SqlSessionFactory;
+import org.mybatis.spring.SqlSessionFactoryBean;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.EnvironmentAware;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -29,8 +36,10 @@ import java.util.Properties;
 public class DynamicDataSourceConfig implements EnvironmentAware {
     public static final String HOT_DATA_SOURCE = "hot";
     public static final String COLD_DATA_SOURCE = "cold";
-
     public static final Map<Object, Object> TARGET_DATA_SOURCES = new HashMap<>();
+    public static final Map<String, SqlSessionFactory> SQL_SESSION_FACTORIES = new HashMap<>();
+
+    private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     @Bean
     public DataSource dataSource() {
@@ -65,6 +74,14 @@ public class DynamicDataSourceConfig implements EnvironmentAware {
         // 添加到数据源集合
         TARGET_DATA_SOURCES.put(HOT_DATA_SOURCE, hotDataSource);
         TARGET_DATA_SOURCES.put(COLD_DATA_SOURCE, coldDataSource);
+
+        // 创建 SqlSessionFactory
+        try {
+            SQL_SESSION_FACTORIES.put(HOT_DATA_SOURCE, getHotSqlSessionFactory(hotDataSource));
+            SQL_SESSION_FACTORIES.put(COLD_DATA_SOURCE, getColdSqlSessionFactory(coldDataSource));
+        } catch (Exception e) {
+            logger.error("创建 SqlSessionFactory 失败", e);
+        }
     }
 
     /**
@@ -92,5 +109,29 @@ public class DynamicDataSourceConfig implements EnvironmentAware {
         xaDataSource.setXaProperties(properties);
         xaDataSource.setPoolSize(5);
         return xaDataSource;
+    }
+
+    private SqlSessionFactory getHotSqlSessionFactory(DataSource hotDataSource) throws Exception {
+        SqlSessionFactoryBean sqlSessionFactoryBean = new SqlSessionFactoryBean();
+        sqlSessionFactoryBean.setDataSource(hotDataSource);
+
+        org.apache.ibatis.session.Configuration configuration = new org.apache.ibatis.session.Configuration();
+        configuration.addMapper(ServeMapper.class);
+        configuration.addMapper(ServeArchiveMapper.class);
+        configuration.addMapper(ServeAccessMapper.class);
+        sqlSessionFactoryBean.setConfiguration(configuration);
+
+        return sqlSessionFactoryBean.getObject();
+    }
+
+    private SqlSessionFactory getColdSqlSessionFactory(DataSource coldDataSource) throws Exception {
+        SqlSessionFactoryBean sqlSessionFactoryBean = new SqlSessionFactoryBean();
+        sqlSessionFactoryBean.setDataSource(coldDataSource);
+
+        org.apache.ibatis.session.Configuration configuration = new org.apache.ibatis.session.Configuration();
+        configuration.addMapper(ServeMapper.class);
+        sqlSessionFactoryBean.setConfiguration(configuration);
+
+        return sqlSessionFactoryBean.getObject();
     }
 }

@@ -342,8 +342,10 @@ public class SeparatedAspect {
 
         // 事务内执行
         transactionTemplate.executeWithoutResult(status -> {
-            try (SqlSession hotSqlSession = getHotSqlSessionFactory().openSession();
-                 SqlSession coldSqlSession = getColdSqlSessionFactory().openSession()) {
+            try (SqlSession hotSqlSession = DynamicDataSourceConfig.SQL_SESSION_FACTORIES
+                    .get(DynamicDataSourceConfig.HOT_DATA_SOURCE).openSession();
+                 SqlSession coldSqlSession = DynamicDataSourceConfig.SQL_SESSION_FACTORIES
+                         .get(DynamicDataSourceConfig.COLD_DATA_SOURCE).openSession()) {
                 // 获取冷库的 mapper
                 ServeMapper coldServeMapper = coldSqlSession.getMapper(ServeMapper.class);
                 // 获取热库的 mapper
@@ -358,16 +360,16 @@ public class SeparatedAspect {
                     serveArchiveMapper.deleteById(id);
                     logger.info("删除归档记录: {}", serveArchive);
 
-                    if(serveArchive.getStorageType().equals("COLD")){
+                    if (serveArchive.getStorageType().equals("COLD")) {
                         // 如果归档表中数据状态为COLD，删除冷库数据
                         coldServeMapper.deleteById(id);
                         logger.info("删除冷库记录: {}", id);
-                    }else {
+                    } else {
                         // 如果归档表中数据状态为HOT或PROCESSING，删除热库数据
                         hotServeMapper.deleteById(id);
                         logger.info("删除热库记录: {}", id);
                     }
-                }else{
+                } else {
                     // 如果归档表中不存在数据，删除热库数据
                     hotServeMapper.deleteById(id);
                     logger.info("删除热库记录: {}", id);
@@ -388,38 +390,6 @@ public class SeparatedAspect {
         // 临界问题：先查询归档记录表数据不存在，然后发生归档删除热库数据，再 insert 订单，此时幂等失效，有订单重复风险
         // 解决方案：热库数据延迟删除，在数据写入冷库并且归档表新增记录后，延迟 Xmin 才删除热库数据，更新归档状态
 
-    }
-
-    private DataSource getHotDataSource() {
-        return (DataSource) DynamicDataSourceConfig.TARGET_DATA_SOURCES.get(DynamicDataSourceConfig.HOT_DATA_SOURCE);
-    }
-
-    private DataSource getColdDataSource() {
-        return (DataSource) DynamicDataSourceConfig.TARGET_DATA_SOURCES.get(DynamicDataSourceConfig.COLD_DATA_SOURCE);
-    }
-
-    private SqlSessionFactory getHotSqlSessionFactory() throws Exception {
-        SqlSessionFactoryBean sqlSessionFactoryBean = new SqlSessionFactoryBean();
-        sqlSessionFactoryBean.setDataSource(getHotDataSource());
-
-        Configuration configuration = new Configuration();
-        configuration.addMapper(ServeMapper.class);
-        configuration.addMapper(ServeArchiveMapper.class);
-        configuration.addMapper(ServeAccessMapper.class);
-        sqlSessionFactoryBean.setConfiguration(configuration);
-
-        return sqlSessionFactoryBean.getObject();
-    }
-
-    private SqlSessionFactory getColdSqlSessionFactory() throws Exception {
-        SqlSessionFactoryBean sqlSessionFactoryBean = new SqlSessionFactoryBean();
-        sqlSessionFactoryBean.setDataSource(getColdDataSource());
-
-        Configuration configuration = new Configuration();
-        configuration.addMapper(ServeMapper.class);
-        sqlSessionFactoryBean.setConfiguration(configuration);
-
-        return sqlSessionFactoryBean.getObject();
     }
 
     private OperateType getOperateType(ProceedingJoinPoint jp) {
