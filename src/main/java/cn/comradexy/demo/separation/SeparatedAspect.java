@@ -289,6 +289,7 @@ public class SeparatedAspect {
         }
 
         // 查询归档表
+        DataSourceContextHolder.setDataSourceType(DataSourceConfig.HOT_DATA_SOURCE);
         ServeArchive serveArchive = serveArchiveMapper.selectById(serve.getId());
         if (serveArchive == null) {
             throw new RuntimeException("服务数据不存在: id=" + serve.getId());
@@ -297,24 +298,32 @@ public class SeparatedAspect {
         // 如果归档状态为COLD
         if (serveArchive.getStorageType().equals("COLD")) {
             // 获取冷库数据
+            DataSourceContextHolder.setDataSourceType(DataSourceConfig.COLD_DATA_SOURCE);
+            Serve coldServe = serveMapper.selectById(serve.getId());
 
             // 回写到热库
+            DataSourceContextHolder.setDataSourceType(DataSourceConfig.HOT_DATA_SOURCE);
+            serveMapper.insert(coldServe);
 
             // 更新归档表状态为HOT
+            serveArchive.setStorageType("HOT");
 
             // 更新热库数据
+            result = jp.proceed();
 
         } else {
             if (serveArchive.getStorageType().equals("PROCESSING")) {
                 // 更新归档状态为HOT
+                serveArchive.setStorageType("HOT");
             }
 
             // 更新热库数据
+            result = jp.proceed();
 
         }
 
         // 记录访问
-
+        serveAccessService.recordAccess(serve.getId());
 
     }
 
