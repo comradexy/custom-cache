@@ -6,27 +6,22 @@ import cn.comradexy.demo.mapper.ServeMapper;
 import cn.comradexy.demo.model.domain.Serve;
 import cn.comradexy.demo.model.domain.ServeAccess;
 import cn.comradexy.demo.model.domain.ServeArchive;
-import cn.comradexy.demo.separation.dbrouter.DynamicDataSourceConfig;
 import cn.comradexy.demo.separation.dbrouter.DataSourceContextHolder;
-import cn.comradexy.demo.service.IServeAccessService;
-import org.apache.ibatis.session.Configuration;
+import cn.comradexy.demo.separation.dbrouter.DynamicDataSourceConfig;
 import org.apache.ibatis.session.SqlSession;
-import org.apache.ibatis.session.SqlSessionFactory;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
 import org.aspectj.lang.reflect.MethodSignature;
-import org.mybatis.spring.SqlSessionFactoryBean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import javax.annotation.Resource;
-import javax.sql.DataSource;
 import java.lang.reflect.Method;
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -42,19 +37,15 @@ import java.util.concurrent.CompletableFuture;
 @Aspect
 @Component
 public class SeparatedAspect {
+    private static final long ACCESS_TIME_UPDATE_THRESHOLD = 3;
     private final Logger logger = LoggerFactory.getLogger(SeparatedAspect.class);
-
     private Object result = null;
-
     @Resource
-    private IServeAccessService serveAccessService;
-
+    private ServeAccessMapper serveAccessMapper;
     @Resource
     private ServeArchiveMapper serveArchiveMapper;
-
     @Resource
     private ServeMapper serveMapper;
-
     @Resource
     private TransactionTemplate transactionTemplate;
 
@@ -125,7 +116,7 @@ public class SeparatedAspect {
 
         // 记录访问
         if (null != result) {
-            serveAccessService.recordAccess(((Serve) result).getId());
+            recordAccess(((Serve) result).getId());
         }
 
         if (result != null) {
@@ -161,7 +152,7 @@ public class SeparatedAspect {
         }).join();
 
         // 记录访问
-        batchSet.forEach((item) -> serveAccessService.recordAccess(item.getId()));
+        batchSet.forEach((item) -> recordAccess(item.getId()));
 
         // 转为List返回
         result = List.copyOf(batchSet);
@@ -184,7 +175,7 @@ public class SeparatedAspect {
             result = jp.proceed();
 
             // 记录访问
-            serveAccessService.recordAccess(serve.getId());
+            recordAccess(serve.getId());
 
             return;
         }
@@ -212,7 +203,7 @@ public class SeparatedAspect {
         result = jp.proceed();
 
         // 记录访问
-        serveAccessService.recordAccess(serve.getId());
+        recordAccess(serve.getId());
     }
 
     private void selectBatchForUpdate(ProceedingJoinPoint jp) throws Throwable {
@@ -253,7 +244,7 @@ public class SeparatedAspect {
         result = jp.proceed();
 
         // 记录访问
-        ((List<Serve>) result).forEach((item) -> serveAccessService.recordAccess(item.getId()));
+        ((List<Serve>) result).forEach((item) -> recordAccess(item.getId()));
 
     }
 
@@ -288,7 +279,7 @@ public class SeparatedAspect {
         result = jp.proceed();
 
         // 记录访问
-        serveAccessService.recordAccess(serve.getId());
+        recordAccess(serve.getId());
 
     }
 
@@ -330,7 +321,7 @@ public class SeparatedAspect {
         result = jp.proceed();
 
         // 记录访问
-        serveAccessService.recordAccess(serve.getId());
+        recordAccess(serve.getId());
 
     }
 
@@ -390,6 +381,34 @@ public class SeparatedAspect {
         // 临界问题：先查询归档记录表数据不存在，然后发生归档删除热库数据，再 insert 订单，此时幂等失效，有订单重复风险
         // 解决方案：热库数据延迟删除，在数据写入冷库并且归档表新增记录后，延迟 Xmin 才删除热库数据，更新归档状态
 
+    }
+
+    public void recordAccess(long serveId) {
+        // 查询记录是否存在
+        ServeAccess serveAccess = serveAccessMapper.selectById(serveId);
+        if (null != serveAccess) {
+            // 如果存在，则更新访问记录
+            // 访问次数+1，如果访问次数超过 threshold，则更新访问时间，解决 LRU 算法的“缓存污染”问题
+            serveAccess.setAccessCount(serveAccess.getAccessCount() + 1);
+            if (serveAccess.getAccessCount() >= ACCESS_TIME_UPDATE_THRESHOLD) {
+                serveAccess.setLastAccessTime(LocalDateTime.now());
+                serveAccess.setAccessCount(0L);
+            }
+
+            serveAccessMapper.update(serveAccess);
+
+            logger.info("更新服务访问记录: {}", serveAccess);
+        } else {
+            // 如果不存在，则插入新记录
+            serveAccess = ServeAccess.builder()
+                    .id(serveId)
+                    .accessCount(1L)
+                    .lastAccessTime(LocalDateTime.now())
+                    .build();
+            serveAccessMapper.insert(serveAccess);
+        }
+
+        logger.info("插入服务访问记录: {}", serveAccess);
     }
 
     private OperateType getOperateType(ProceedingJoinPoint jp) {
